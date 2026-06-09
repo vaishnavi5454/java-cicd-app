@@ -1,0 +1,78 @@
+pipeline {
+    agent any
+
+    environment {
+        DOCKERHUB_USERNAME = "YOUR_DOCKERHUB_USERNAME"
+        APP_NAME = "java-cicd-app"
+        IMAGE_TAG = "${BUILD_NUMBER}"
+        IMAGE_NAME = "${DOCKERHUB_USERNAME}/${APP_NAME}"
+        REGISTRY_CREDS = "dockerhub-creds"
+    }
+
+    stages {
+
+        stage('Checkout Code') {
+            steps {
+                git branch: 'main',
+                    url: 'https://github.com/YOUR_USERNAME/java-app.git'
+            }
+        }
+
+        stage('Build JAR') {
+            steps {
+                sh 'mvn clean package -DskipTests'
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
+                sh "docker build -t ${IMAGE_NAME}:latest ."
+            }
+        }
+
+        stage('Push to DockerHub') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: "${REGISTRY_CREDS}",
+                    usernameVariable: 'USER',
+                    passwordVariable: 'PASS'
+                )]) {
+                    sh "docker login -u $USER -p $PASS"
+                    sh "docker push ${IMAGE_NAME}:${IMAGE_TAG}"
+                    sh "docker push ${IMAGE_NAME}:latest"
+                }
+            }
+        }
+
+        stage('Update K8s Manifest') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'github-creds',
+                    usernameVariable: 'GIT_USER',
+                    passwordVariable: 'GIT_PASS'
+                )]) {
+                    sh """
+                        git clone https://${GIT_USER}:${GIT_PASS}@github.com/YOUR_USERNAME/k8s-manifests.git
+                        cd k8s-manifests
+                        sed -i 's|${IMAGE_NAME}:.*|${IMAGE_NAME}:${IMAGE_TAG}|g' deployment.yaml
+                        git config user.email "jenkins@demo.com"
+                        git config user.name "Jenkins"
+                        git add deployment.yaml
+                        git commit -m "Update image tag to ${IMAGE_TAG}"
+                        git push origin main
+                    """
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo '✅ Pipeline successful! ArgoCD will deploy now.'
+        }
+        failure {
+            echo '❌ Pipeline failed. Check logs.'
+        }
+    }
+}
