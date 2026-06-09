@@ -2,7 +2,7 @@ pipeline {
     agent {
         docker {
             image 'maven:3.9.6-eclipse-temurin-17'
-            args '--user root -v /var/run/docker.sock:/var/run/docker.sock'
+            args '-u root -v /var/run/docker.sock:/var/run/docker.sock'
         }
     }
 
@@ -15,20 +15,26 @@ pipeline {
 
     stages {
 
+        stage('Check Tools') {
+            steps {
+                sh 'java -version'
+                sh 'mvn -version'
+                sh 'docker --version'
+                sh 'pwd'
+                sh 'ls -al'
+            }
+        }
+
         stage('Build JAR') {
             steps {
-                dir('app'){
                 sh 'mvn clean package -DskipTests'
-            }
             }
         }
 
         stage('Build Docker Image') {
             steps {
-               dir('app'){
                 sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
                 sh "docker build -t ${IMAGE_NAME}:latest ."
-            }
             }
         }
 
