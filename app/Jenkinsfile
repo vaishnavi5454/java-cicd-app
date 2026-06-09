@@ -1,22 +1,19 @@
 pipeline {
-    agent any
+    agent {
+        docker {
+            image '2025vaishnavi/maven-abhishek-docker-agent:v1'
+            args '--user root -v /var/run/docker.sock:/var/run/docker.sock'
+        }
+    }
 
     environment {
-        DOCKERHUB_USERNAME = "YOUR_DOCKERHUB_USERNAME"
+        DOCKERHUB_USERNAME = "2025vaishnavi"
         APP_NAME = "java-cicd-app"
         IMAGE_TAG = "${BUILD_NUMBER}"
         IMAGE_NAME = "${DOCKERHUB_USERNAME}/${APP_NAME}"
-        REGISTRY_CREDS = "dockerhub-creds"
     }
 
     stages {
-
-        stage('Checkout Code') {
-            steps {
-                git branch: 'main',
-                    url: 'https://github.com/YOUR_USERNAME/java-app.git'
-            }
-        }
 
         stage('Build JAR') {
             steps {
@@ -31,37 +28,20 @@ pipeline {
             }
         }
 
-        stage('Push to DockerHub') {
+        stage('Push Docker Image') {
             steps {
                 withCredentials([usernamePassword(
-                    credentialsId: "${REGISTRY_CREDS}",
-                    usernameVariable: 'USER',
-                    passwordVariable: 'PASS'
+                    credentialsId: 'dockerhub-creds',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
                 )]) {
-                    sh "docker login -u $USER -p $PASS"
+
+                    sh '''
+                    echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                    '''
+
                     sh "docker push ${IMAGE_NAME}:${IMAGE_TAG}"
                     sh "docker push ${IMAGE_NAME}:latest"
-                }
-            }
-        }
-
-        stage('Update K8s Manifest') {
-            steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'github-creds',
-                    usernameVariable: 'GIT_USER',
-                    passwordVariable: 'GIT_PASS'
-                )]) {
-                    sh """
-                        git clone https://${GIT_USER}:${GIT_PASS}@github.com/YOUR_USERNAME/k8s-manifests.git
-                        cd k8s-manifests
-                        sed -i 's|${IMAGE_NAME}:.*|${IMAGE_NAME}:${IMAGE_TAG}|g' deployment.yaml
-                        git config user.email "jenkins@demo.com"
-                        git config user.name "Jenkins"
-                        git add deployment.yaml
-                        git commit -m "Update image tag to ${IMAGE_TAG}"
-                        git push origin main
-                    """
                 }
             }
         }
@@ -69,10 +49,11 @@ pipeline {
 
     post {
         success {
-            echo '✅ Pipeline successful! ArgoCD will deploy now.'
+            echo 'Pipeline Success - Image pushed to DockerHub'
         }
+
         failure {
-            echo '❌ Pipeline failed. Check logs.'
+            echo 'Pipeline Failed'
         }
     }
 }
