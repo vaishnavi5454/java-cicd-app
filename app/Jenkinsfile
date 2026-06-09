@@ -6,10 +6,7 @@ pipeline {
         IMAGE_TAG = "v1"
     }
 
-    tools {
-        maven 'Maven3'
-        jdk 'JDK17'
-    }
+
 
     stages {
 
@@ -28,9 +25,9 @@ pipeline {
 
         stage('Docker Build') {
             steps {
-                sh """
+                
                 docker build -t $IMAGE_NAME:$IMAGE_TAG .
-                """
+            
             }
         }
 
