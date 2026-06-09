@@ -17,14 +17,18 @@ pipeline {
 
         stage('Build JAR') {
             steps {
+                dir('app'){
                 sh 'mvn clean package -DskipTests'
+            }
             }
         }
 
         stage('Build Docker Image') {
             steps {
+               dir('app'){
                 sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
                 sh "docker build -t ${IMAGE_NAME}:latest ."
+            }
             }
         }
 
