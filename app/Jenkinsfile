@@ -1,57 +1,50 @@
 pipeline {
-    agent {
-        docker {
-            image 'maven:3.9.6-eclipse-temurin-17'
-            args '-u root -v /var/run/docker.sock:/var/run/docker.sock'
-        }
-    }
+    agent any
 
     environment {
-        DOCKERHUB_USERNAME = "2025vaishnavi"
-        APP_NAME = "java-cicd-app"
-        IMAGE_TAG = "${BUILD_NUMBER}"
-        IMAGE_NAME = "${DOCKERHUB_USERNAME}/${APP_NAME}"
+        IMAGE_NAME = "vaishnavi5454/java-cicd-app"
+        IMAGE_TAG = "v1"
+    }
+
+    tools {
+        maven 'Maven3'
+        jdk 'JDK17'
     }
 
     stages {
 
-        stage('Check Tools') {
+        stage('Checkout') {
             steps {
-                sh 'java -version'
-                sh 'mvn -version'
-                sh 'docker --version'
-                sh 'pwd'
-                sh 'ls -al'
+                git branch: 'main',
+                    url: 'https://github.com/vaishnavi5454/java-cicd-app.git'
             }
         }
 
-        stage('Build JAR') {
+        stage('Build Maven (FAST)') {
             steps {
                 sh 'mvn clean package -DskipTests'
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Docker Build') {
             steps {
-                sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
-                sh "docker build -t ${IMAGE_NAME}:latest ."
+                sh """
+                docker build -t $IMAGE_NAME:$IMAGE_TAG .
+                """
             }
         }
 
-        stage('Push Docker Image') {
+        stage('Docker Push') {
             steps {
                 withCredentials([usernamePassword(
-                    credentialsId: 'dockerhub-creds',
+                    credentialsId: 'docker-cred',
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
-
-                    sh '''
-                    echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-                    '''
-
-                    sh "docker push ${IMAGE_NAME}:${IMAGE_TAG}"
-                    sh "docker push ${IMAGE_NAME}:latest"
+                    sh """
+                    echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+                    docker push $IMAGE_NAME:$IMAGE_TAG
+                    """
                 }
             }
         }
@@ -59,11 +52,10 @@ pipeline {
 
     post {
         success {
-            echo 'Pipeline Success - Image pushed to DockerHub'
+            echo "Pipeline SUCCESS "
         }
-
         failure {
-            echo 'Pipeline Failed'
+            echo "Pipeline FAILED "
         }
     }
 }
