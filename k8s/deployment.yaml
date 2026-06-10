@@ -14,7 +14,7 @@ spec:
         app: java-cicd-app
     spec:
       containers:
-        - name: java-cicd-app
-          image: YOUR_DOCKERHUB_USERNAME/java-cicd-app:latest
+        - name: sprindboot-app
+          image: 2025vaishnavi/sprindboot-app:IMAGE_TAG
           ports:
             - containerPort: 8080
