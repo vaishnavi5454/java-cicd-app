@@ -1,58 +1,63 @@
-pipeline {
+pipeline
+{
     agent any
-
-    environment {
-        IMAGE_NAME = "vaishnavi5454/java-cicd-app"
-        IMAGE_TAG = "v1"
+    environment 
+    {
+  IMAGE_NAME="2025vaishnavi/sprindboot-app"
     }
 
 
+stages
+{
+stage('Checkout')
+{
+    steps
+    {
+          checkout scm
+    }
+}
+stage('build')
+{
+steps{
+    dir('app'){
+    sh 'mvn clean package'
+    }
+}
+}
+stage('Docker Build')
+{
+    steps{
+        dir('app'){
+        sh 'docker build -t $IMAGE_NAME:${BUILD_NUMBER} .'
+    }
+    }
+}
 
-    stages {
-
-        stage('Checkout') {
-            steps {
-                git branch: 'main',
-                    url: 'https://github.com/vaishnavi5454/java-cicd-app.git'
-            }
-        }
-
-        stage('Build Maven (FAST)') {
-            steps {
-                sh 'mvn clean package -DskipTests'
-            }
-        }
-
-        stage('Docker Build') {
-            steps {
-                
-                docker build -t $IMAGE_NAME:$IMAGE_TAG .
-            
-            }
-        }
-
-        stage('Docker Push') {
-            steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'docker-cred',
-                    usernameVariable: 'DOCKER_USER',
-                    passwordVariable: 'DOCKER_PASS'
-                )]) {
-                    sh """
-                    echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
-                    docker push $IMAGE_NAME:$IMAGE_TAG
-                    """
-                }
-            }
+stage('Docker Puch')
+{
+    steps{
+        withCredentials([usernamePassword(credentialsId:'docker-cred',
+                        usernameVariable:'Docker_User',
+                        passwordVariable:'Docker_Pass')])
+        
+        {
+            sh '''
+            echo $Docker_Pass | docker login -u $Docker_User --password-stdin
+             docker push $IMAGE_NAME:${BUILD_NUMBER}
+              '''
         }
     }
+}
 
-    post {
-        success {
-            echo "Pipeline SUCCESS "
-        }
-        failure {
-            echo "Pipeline FAILED "
-        }
-    }
+stage('Deploy')
+{
+ steps{
+    sh '''
+    sed -i "s|IMAGE_TAG|${BUILD_NUMBER}|g" k8s/deployment.yaml
+    kubectl apply -f k8s/
+      '''
+ }
+}
+}
+
 }
