@@ -2,7 +2,6 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: java-cicd-app
-  namespace: default
 spec:
   replicas: 2
   selector:
@@ -14,7 +13,7 @@ spec:
         app: java-cicd-app
     spec:
       containers:
-        - name: sprindboot-app
-          image: 2025vaishnavi/sprindboot-app:IMAGE_TAG
-          ports:
-            - containerPort: 8080
+      - name: springboot-app
+        image: 2025vaishnavi/sprindboot-app:1
+        ports:
+        - containerPort: 8080

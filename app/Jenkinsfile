@@ -49,12 +49,18 @@ stage('Docker Puch')
     }
 }
 
-stage('Deploy')
+stage('Update Deployment')
 {
- steps{
-    echo 'deployement handle by argocd'
- }
-}
-}
+    steps{
+        sh """
+        sed -i 's#image:.*#image: ${IMAGE_NAME}:${BUILD_NUMBER}#' k8s/deployment.yaml
 
+        git config --global user.email "vaishnavijpawar4gmail.com"
+        git config --global user.name "vaishnavi"
+
+        git add k8s/deployment.yaml
+        git commit -m "Update image ${BUILD_NUMBER}" || true
+        git push origin main
+        """
+    }
 }
