@@ -48,6 +48,8 @@ pipeline {
 
         stage('Update Deployment') {
             steps {
+                sh 'git branch -a'
+                sh 'git remote -v'
                 sh """
                 sed -i 's#image:.*#image: ${IMAGE_NAME}:${BUILD_NUMBER}#' k8s/deployment.yaml
 
