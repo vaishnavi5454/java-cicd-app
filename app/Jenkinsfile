@@ -47,21 +47,30 @@ pipeline {
         }
 
         stage('Update Deployment') {
-            steps {
-                sh 'git branch -a'
-                sh 'git remote -v'
-                sh """
-                sed -i 's#image:.*#image: ${IMAGE_NAME}:${BUILD_NUMBER}#' k8s/deployment.yaml
+    steps {
+        withCredentials([
+            usernamePassword(
+                credentialsId: 'github',
+                usernameVariable: 'GIT_USER',
+                passwordVariable: 'GIT_TOKEN'
+            )
+        ]) {
 
-                git config --global user.email "vaishnavijpawar4@gmail.com"
-                git config --global user.name "vaishnavi"
+            sh """
+            sed -i 's#image:.*#image: ${IMAGE_NAME}:${BUILD_NUMBER}#' k8s/deployment.yaml
 
-                git add k8s/deployment.yaml
-                git commit -m "Update image ${BUILD_NUMBER}" || true
-               git push origin HEAD:main
-                """
-            }
+            git config --global user.email "vaishnavijpawar4@gmail.com"
+            git config --global user.name "vaishnavi"
+
+            git add k8s/deployment.yaml
+            git commit -m "Update image ${BUILD_NUMBER}" || true
+
+            git push https://${GIT_USER}:${GIT_TOKEN}@github.com/vaishnavi5454/java-cicd-app.git HEAD:main
+            """
         }
+    }
+}
+
 
         stage('Deploy') {
             steps {
